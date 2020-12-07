@@ -1,3 +1,6 @@
 DataEngine.exe
 storage
-1.*
+*.input
+*.output
+minHeap.*
+map.*
