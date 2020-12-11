@@ -17,4 +17,4 @@ https://hackmd.io/@dsclab/rJDIP8YYv
 `g++ .\DataEngine.cpp -O3 -o DataEngine.exe `
 
 ## 執行
-`./DataEngine.exe /*.input`
+`./DataEngine.exe 1.input`

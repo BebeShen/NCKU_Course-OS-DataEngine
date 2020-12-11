@@ -4,3 +4,5 @@ storage
 *.output
 minHeap.*
 map.*
+*.ps1
+test.cpp
