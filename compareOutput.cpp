@@ -37,11 +37,12 @@ int main(int argc,char *argv[]){
         line++;
         getline(input1,s1);
         getline(input2,s2);
-        cout<<line<<":\n"<<s1<<"\n"<<s2<<"\n";
+        // cout<<line<<":\n"<<s1<<"\n"<<s2<<"\n";
         if(s1.compare(s2)!=0){
             cout<<line<<"\n";
             break;
         }
     }
+    cout<<"Complete the same!!\n";
     return 0;
 }

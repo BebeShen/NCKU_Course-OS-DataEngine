@@ -7,8 +7,10 @@
 #include<queue>
 #include<map>
 #include<ctime>
-// set maxbuf size to (128 bytes*1000,000,0) = 1.28GB
-#define maxbuf 10000000
+// set maxbuf size to (128 bytes*1,000,000) = 128MB
+#define maxbuf 1000000
+// #define PageSize INT32_MAX
+#define PageSize 4000
 using namespace std;
 string IntToString(unsigned int num){
     stringstream ss;
@@ -56,6 +58,7 @@ string CheckStorage(unsigned long long int file_number,unsigned long long int ke
 }
 void DataToStorage(string file_path,map<unsigned long long int,string>data){
     map<unsigned long long int,string>stored_data;
+    cout<<"storage:"<<file_path<<"\n";
     fstream tmpfile(file_path,ios_base::in);
     if(!tmpfile){
         cout<<"Open storage failed.\n";
@@ -97,7 +100,7 @@ int main(int argc,char *argv[]){
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
     double start_time = clock();
-    string outputfile_path = "1.output";
+    string outputfile_path = "10000.output";
     string inputfile_path = "";
     map<unsigned long long int,string> buffer; 
     map<unsigned long long int,string> cache; 
@@ -159,7 +162,7 @@ int main(int argc,char *argv[]){
 
             /* Implement GET instr */
             if(buffer.count(key)==0){
-                string tmp = CheckStorage(key/INT32_MAX,key%INT32_MAX);
+                string tmp = CheckStorage(key/PageSize,key%PageSize);
                 // cout<<CheckStorage(key/INT32_MAX,key%INT32_MAX)<<"\n";
                 outputFile<<tmp<<"\n";
             }
@@ -186,7 +189,7 @@ int main(int argc,char *argv[]){
                     //cout<<buffer[i]<<"\n";
                     outputFile<<buffer.at(i)<<"\n";
                 }else{
-                    string tmp = CheckStorage(i/INT32_MAX,i%INT32_MAX);
+                    string tmp = CheckStorage(i/PageSize,i%PageSize);
                     //cout<<CheckStorage(i/INT32_MAX,i%INT32_MAX)<<"\n";
                     outputFile<<tmp<<"\n";
                 }
@@ -194,29 +197,35 @@ int main(int argc,char *argv[]){
         }
 
         // if buffer is full, move data to storage
-        int number_file = -1;
+        int number_file = 0;
         if(buffer.size() == maxbuf){
-            // TODO
-            //     Don't need to clear data after put data into storage (use LRU?) -> to do later
-            // declare variables
+            cout<<"Write File!\n";
             string tmpfile_path;
             map<unsigned long long int, string>::iterator itr;
             unsigned int store_number;
-            for (itr = buffer.begin(),cache.insert({itr->first,itr->second});itr != buffer.end();++itr) { 
-                cout << itr->first <<", " << itr->second <<"\n"; 
+            for (itr = buffer.begin();itr != buffer.end();++itr) { 
+                // cout << itr->first <<", " << itr->second <<"\n"; 
                 // page data into storage classified by key's upper 32-bit
-                store_number = itr->first/INT32_MAX;
+                if(itr == buffer.begin()){
+                    // 1st round
+                    cache.insert({itr->first,itr->second});
+                    number_file = itr->first/PageSize;
+                }
+                store_number = itr->first/PageSize;
+                // cout<<store_number<<"\n";
                 if(store_number>number_file){
                     tmpfile_path = "storage/";
-                    tmpfile_path.append(to_string(store_number));
+                    tmpfile_path.append(to_string(number_file));
                     DataToStorage(tmpfile_path,cache);
                     cache.clear();
+                    number_file = store_number;
                     // Maybe change int to unsigned int, long to unsigned long for scale.
                 }
                 else{
                     cache.insert({itr->first,itr->second});
                 }
             } 
+            buffer.clear();
         }
         // output buffer 
         // map<unsigned long long int, string>::iterator itr;
@@ -224,6 +233,7 @@ int main(int argc,char *argv[]){
         //     cout << itr->first <<", " << itr->second <<"\n"; 
         // } 
     }
+    cout<<"Buffer:"<<buffer.size()<<"\n";
     inputFile.close();
     outputFile.close();
     /* End here */
