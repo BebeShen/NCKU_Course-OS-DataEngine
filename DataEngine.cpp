@@ -3,8 +3,6 @@
 #include<fstream>
 #include<sstream>  
 #include<vector>
-/*map, unordered_map*/
-#include<queue>
 #include<map>
 #include<ctime>
 // set maxbuf size to (128 bytes*1,000,000) = 128MB
@@ -107,14 +105,21 @@ int main(int argc,char *argv[]){
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
     double start_time = clock();
-    string outputfile_path = "result.output";
+    string outputfile_path = "";
     string inputfile_path = "";
+    string tmp;
+    const char* dot = ".";
     map<unsigned long long,string> buffer; 
     map<unsigned long long,string> cache; 
     inputfile_path.append(argv[1]);
+    tmp = inputfile_path.substr(inputfile_path.find_last_of("/\\")+1,inputfile_path.length());
+    outputfile_path = tmp.substr(0,tmp.find_first_of(dot,0));
+    outputfile_path.append(".output");
+    cout<<outputfile_path<<"\n";
     // outputfile_path.append(outputfile_path);
     fstream inputFile(inputfile_path,ios_base::in);
-    fstream outputFile(outputfile_path,ios_base::out);
+    bool all_put = true;
+    fstream outputFile;
     /* Code start here */
     // read command from inputfile
     if(!inputFile){
@@ -157,11 +162,14 @@ int main(int argc,char *argv[]){
             }
         }
         else if(command == "GET"){
+            if(all_put){
+                all_put = false;
+                outputFile.open(outputfile_path,ios_base::out);
+            }
             // extract key from instruction
             key_pos = instr.find_first_of(delim,0);
             unsigned long long key = atoll(instr.substr(0,key_pos).c_str());
             instr = instr.substr(key_pos+1,instr.length());
-
             /* Implement GET instr */
             if(buffer.count(key)==0){
                 string tmp = CheckStorage(key/PageSize,key%PageSize);
@@ -172,6 +180,10 @@ int main(int argc,char *argv[]){
             }
         }
         else if(command == "SCAN"){
+            if(all_put){
+                all_put = false;
+                outputFile.open(outputfile_path,ios_base::out);
+            }
             // extract key1 from instruction
             key_pos = instr.find_first_of(delim,0);
             unsigned long long key_1 = atoll(instr.substr(0,key_pos).c_str());
@@ -210,15 +222,9 @@ int main(int argc,char *argv[]){
             }
             buffer.clear();
         }
-        // output buffer 
-        // map<unsigned long long int, string>::iterator itr;
-        // for (itr = buffer.begin();itr != buffer.end();++itr) { 
-        //     cout << itr->first <<", " << itr->second <<"\n"; 
-        // } 
     }
-    // cout<<"Buffer:"<<buffer.size()<<"\n";
     inputFile.close();
-    outputFile.close();
+    if(!all_put)outputFile.close();
     /* End here */
     double end_time = clock();
     cout<<"\nExecution time:"<< (end_time - start_time) / CLOCKS_PER_SEC << "(s)\n";

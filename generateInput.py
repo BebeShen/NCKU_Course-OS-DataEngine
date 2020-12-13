@@ -13,23 +13,23 @@ random.seed(time.time())
 # Set ENV
 maxValue = pow(2,31)-1 # 2^31-1
 minValue = 0
-number_input = 5000
+number_input = 10000000
 # file_path = "small_" + str(number_input)+'.input'
-file_path = "5000.input"
+file_path = "all_put_1GB.input"
 method = ['PUT','GET','SCAN']
 seed = "0123456789qazxswedcvfrtgbnhyujmkiolp"
 
 with open(file_path,'w') as f:
     instrs = []
     for i in range(number_input):
-        which = random.randint(1,9)
+        which = random.randint(1,7)
         if which <= 7:
             # PUT
             s = []
             for _ in range(128):
                 s.append(random.choice(seed))
             # instr = "PUT" + " " + str(random.randint(minValue,maxValue)) + " " + ''.join(s)
-            instr = "PUT" + " " + str(random.randint(0,7999)) + " " + ''.join(s)
+            instr = "PUT" + " " + str(random.randint(0,4000*5-1)) + " " + ''.join(s)
             # print(instr)
             instrs.append(instr+"\n")
         elif which <= 9:
