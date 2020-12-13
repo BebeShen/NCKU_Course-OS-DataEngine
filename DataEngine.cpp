@@ -35,12 +35,11 @@ map<unsigned long long,string> GetPage(unsigned long long p,unsigned long long k
         key_pos = tmp.find_first_of(delim,0);
         _key = atoll(tmp.substr(0,key_pos).c_str());
         tmp = tmp.substr(key_pos+1,tmp.length());
-        if(_key < key){
-            continue;
-        }
-        else{
-            value_pos = tmp.find_first_of(delim,0);
-            value = tmp.substr(0,value_pos);
+        value_pos = tmp.find_first_of(delim,0);
+        value = tmp.substr(0,value_pos);
+        if(tmp_data.count(_key)>0){
+            tmp_data.at(_key) = value;
+        }else{
             tmp_data.insert({_key,value});
         }
     }
