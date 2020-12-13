@@ -5,6 +5,7 @@
 #include<vector>
 #include<map>
 #include<ctime>
+#include<random>
 // set maxbuf size to (128 bytes*1,000,000) = 128MB
 #define maxbuf 1000000
 // #define PageSize INT32_MAX
@@ -53,7 +54,7 @@ string CheckStorage(unsigned long long file_number,unsigned long long key){
     }
     // declare local variable
     const char* delim = " ";
-    int key_pos,value_pos;
+    int key_pos,value_pos = -1;
     string value;
     unsigned long long _key;
     while(!tmpfile.eof()){
@@ -62,12 +63,9 @@ string CheckStorage(unsigned long long file_number,unsigned long long key){
         key_pos = tmp.find_first_of(delim,0);
         _key = atoll(tmp.substr(0,key_pos).c_str());
         tmp = tmp.substr(key_pos+1,tmp.length());
-        if(_key > key){
-            // Because stored data is ordered, 
-            // so if the current key exceed wanted key,
-            // the value doesn't exist.
-            return "EMPTY";
-        }
+        // if(_key > key){
+        //     return "EMPTY";
+        // }
         if(_key != key){
             continue;
         }
@@ -75,61 +73,69 @@ string CheckStorage(unsigned long long file_number,unsigned long long key){
             // find the key in storage
             value_pos = tmp.find_first_of(delim,0);
             value = tmp.substr(0,value_pos);
-            return value;
         }
     }
-    return "EMPTY";
+    if(value_pos==-1)
+        return "EMPTY";
+    else{
+        return value;
+    }
 }
 void DataToStorage(string file_path,map<unsigned long long,string>data){
     map<unsigned long long,string>stored_data;
-    fstream tmpfile(file_path,ios_base::in);
+    // fstream tmpfile(file_path,ios_base::in);
+    fstream tmpfile(file_path,ios_base::app);
     map<unsigned long long, string>::iterator itr;
-    if(!tmpfile){
-        // storage doesn't exist
-        tmpfile.close();
-        for(itr = data.begin();itr != data.end();++itr){
-            stored_data.insert({itr->first,itr->second});
-        }
-    }
-    else{
-        // if storage exist
-        int key_pos,value_pos;
-        unsigned long long _key;
-        const char* delim = " ";
-        string s,value;
-        while(!tmpfile.eof()){
-            getline(tmpfile,s);
-            if(s == "")continue;
-            key_pos = s.find_first_of(delim,0);
-            _key = atoll(s.substr(0,key_pos).c_str());
-            s = s.substr(key_pos+1,s.length());
-            value_pos = s.find_first_of(delim,0);
-            value = s.substr(0,value_pos);
-            stored_data.insert({_key,value});
-        }
-        tmpfile.close();
-            
-        for(itr = data.begin();itr != data.end();++itr){
-            if(stored_data.count(itr->first)==0){
-                // No old data in storage, so insert a new entry
-                stored_data.insert({itr->first,itr->second});
-            }
-            else{
-                // Update data in storage
-                stored_data.at(itr->first) = itr->second;
-            }
-        }
-    }
-
-    tmpfile.open(file_path,ios_base::out);
-    for(itr = stored_data.begin();itr != stored_data.end();++itr){
+    for(itr = data.begin();itr != data.end();itr++){
         tmpfile<<itr->first<<" "<<itr->second<<"\n";
     }
+    // if(!tmpfile){
+    //     // storage doesn't exist
+    //     tmpfile.close();
+    //     for(itr = data.begin();itr != data.end();++itr){
+    //         stored_data.insert({itr->first,itr->second});
+    //     }
+    // }
+    // else{
+    //     // if storage exist
+    //     int key_pos,value_pos;
+    //     unsigned long long _key;
+    //     const char* delim = " ";
+    //     string s,value;
+    //     while(!tmpfile.eof()){
+    //         getline(tmpfile,s);
+    //         if(s == "")continue;
+    //         key_pos = s.find_first_of(delim,0);
+    //         _key = atoll(s.substr(0,key_pos).c_str());
+    //         s = s.substr(key_pos+1,s.length());
+    //         value_pos = s.find_first_of(delim,0);
+    //         value = s.substr(0,value_pos);
+    //         stored_data.insert({_key,value});
+    //     }
+    //     tmpfile.close();
+            
+    //     for(itr = data.begin();itr != data.end();++itr){
+    //         if(stored_data.count(itr->first)==0){
+    //             // No old data in storage, so insert a new entry
+    //             stored_data.insert({itr->first,itr->second});
+    //         }
+    //         else{
+    //             // Update data in storage
+    //             stored_data.at(itr->first) = itr->second;
+    //         }
+    //     }
+    // }
+
+    // tmpfile.open(file_path,ios_base::out);
+    // for(itr = stored_data.begin();itr != stored_data.end();++itr){
+    //     tmpfile<<itr->first<<" "<<itr->second<<"\n";
+    // }
     tmpfile.close();
 }
 // .exe [inputfile]
 int main(int argc,char *argv[]){
     // Set ENV
+    srand( time(NULL) );
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
     double start_time = clock();
@@ -179,13 +185,34 @@ int main(int argc,char *argv[]){
                 if(buffer.count(key)==0){
                     // buffer doesn't have the data
                     buffer.insert({key,value});
+                    write_data.insert({key%PageSize,value});
+                    string tmpfile_path = "storage/";
+                    tmpfile_path.append(to_string(key/PageSize));
+                    DataToStorage(tmpfile_path,write_data);
+                    write_data.clear();
                 }
                 else{
                     buffer.at(key) = value;
                 }
             }
             else{
-                cout<<"Exceed the buffer limit!\n";
+                map<unsigned long long, string>::iterator itr;
+                // 隨機移除一組key-value
+                int offset = rand() % ((buffer.size()-10) - 0 + 1) + 0;
+                for(int i=0;i<offset;++i)itr++;
+                buffer.erase(itr);
+                if(buffer.count(key)==0){
+                    // buffer doesn't have the data
+                    buffer.insert({key,value});
+                    write_data.insert({key%PageSize,value});
+                    string tmpfile_path = "storage/";
+                    tmpfile_path.append(to_string(key/PageSize));
+                    DataToStorage(tmpfile_path,write_data);
+                    write_data.clear();
+                }
+                else{
+                    buffer.at(key) = value;
+                }
             }
         }
         else if(command == "GET"){
@@ -248,45 +275,8 @@ int main(int argc,char *argv[]){
                 }
             }
         }
-
-        // if buffer is full, move data to storage
-        int last_file = 0;
-        if(buffer.size() == maxbuf){
-            string tmpfile_path;
-            map<unsigned long long, string>::iterator itr;
-            unsigned long long store_number;
-            unsigned long long last_number;
-            for (itr = buffer.begin();itr != buffer.end();++itr) { 
-                // page data into storage classified by key's upper 32-bit
-                if(itr == buffer.begin()){
-                    last_number = store_number = itr->first/PageSize;
-                    write_data.insert({itr->first%PageSize,itr->second});
-                    continue;
-                }
-                else{
-                    store_number = itr->first/PageSize;
-                    if(store_number != last_number){
-                        tmpfile_path = "storage/";
-                        tmpfile_path.append(to_string(last_number));
-                        DataToStorage(tmpfile_path,write_data);
-                        write_data.clear();
-                        write_data.insert({itr->first%PageSize,itr->second});
-                        last_number = store_number;
-                    }
-                    else{
-                        write_data.insert({itr->first%PageSize,itr->second});
-                        if(itr == buffer.end()){
-                            tmpfile_path = "storage/";
-                            tmpfile_path.append(to_string(store_number));
-                            DataToStorage(tmpfile_path,write_data);
-                        }
-                    }
-                }
-            }
-            write_data.clear();
-            buffer.clear();
-        }
     }
+    
     inputFile.close();
     if(!all_put)outputFile.close();
     /* End here */
