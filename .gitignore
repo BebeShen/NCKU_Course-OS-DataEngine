@@ -1,1 +1,9 @@
 DataEngine.exe
+storage
+*.input
+*.output
+minHeap.*
+map.*
+*.ps1
+test.cpp
+compare.exe
