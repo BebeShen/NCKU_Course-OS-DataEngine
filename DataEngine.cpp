@@ -17,6 +17,34 @@ string IntToString(unsigned int num){
     ss>>s;
     return s;
 }
+map<unsigned long long,string> GetPage(unsigned long long p,unsigned long long key){
+    string file_path = "storage/";
+    map<unsigned long long,string>tmp_data;
+    fstream tmpfile(file_path+to_string(p),ios_base::in);
+    if(!tmpfile){
+        return tmp_data;
+    }
+    const char* delim = " ";
+    int key_pos,value_pos;
+    string value;
+    unsigned long long _key;
+    while(!tmpfile.eof()){
+        string tmp;
+        getline(tmpfile,tmp);
+        key_pos = tmp.find_first_of(delim,0);
+        _key = atoll(tmp.substr(0,key_pos).c_str());
+        tmp = tmp.substr(key_pos+1,tmp.length());
+        if(_key < key){
+            continue;
+        }
+        else{
+            value_pos = tmp.find_first_of(delim,0);
+            value = tmp.substr(0,value_pos);
+            tmp_data.insert({_key,value});
+        }
+    }
+    return tmp_data;
+}
 string CheckStorage(unsigned long long file_number,unsigned long long key){
     string file_path = "storage/";
     fstream tmpfile(file_path+to_string(file_number),ios_base::in);
@@ -34,14 +62,14 @@ string CheckStorage(unsigned long long file_number,unsigned long long key){
         key_pos = tmp.find_first_of(delim,0);
         _key = atoll(tmp.substr(0,key_pos).c_str());
         tmp = tmp.substr(key_pos+1,tmp.length());
-        if(_key != key){
-            continue;
-        }
-        else if(_key > key){
+        if(_key > key){
             // Because stored data is ordered, 
             // so if the current key exceed wanted key,
             // the value doesn't exist.
             return "EMPTY";
+        }
+        if(_key != key){
+            continue;
         }
         else{
             // find the key in storage
@@ -110,12 +138,12 @@ int main(int argc,char *argv[]){
     string tmp;
     const char* dot = ".";
     map<unsigned long long,string> buffer; 
-    map<unsigned long long,string> cache; 
+    map<unsigned long long,string> cache;
+    map<unsigned long long,string> write_data; 
     inputfile_path.append(argv[1]);
     tmp = inputfile_path.substr(inputfile_path.find_last_of("/\\")+1,inputfile_path.length());
     outputfile_path = tmp.substr(0,tmp.find_first_of(dot,0));
     outputfile_path.append(".output");
-    cout<<outputfile_path<<"\n";
     // outputfile_path.append(outputfile_path);
     fstream inputFile(inputfile_path,ios_base::in);
     bool all_put = true;
@@ -145,7 +173,6 @@ int main(int argc,char *argv[]){
             // extract value from instruction
             value_pos = instr.find_first_of(delim,0);
             value = instr.substr(0,value_pos);
-            // cout<<value<<"\n";
 
             /* Implement PUT instr */
             if(buffer.size() <= maxbuf){
@@ -194,12 +221,30 @@ int main(int argc,char *argv[]){
             instr = instr.substr(key_pos+1,instr.length());
 
             /* Implement SCAN instr */
+            unsigned long long last_page = -1;
+            unsigned long long Page = key_1/PageSize;
             for(unsigned long long i=key_1;i<=key_2;++i){
                 if(buffer.count(i)>0){
                     outputFile<<buffer.at(i)<<"\n";
-                }else{
-                    string tmp = CheckStorage(i/PageSize,i%PageSize);
-                    outputFile<<tmp<<"\n";
+                }
+                else if(i/PageSize == last_page){
+                    if(cache.count(i%PageSize)>0)
+                        outputFile<<cache.at(i%PageSize)<<"\n";
+                    else{
+                        outputFile<<"EMPTY\n";
+                    }
+                }
+                else{
+                    if(i/PageSize!=Page){
+                        string tmp = CheckStorage(i/PageSize,i%PageSize);
+                        Page = i/PageSize;
+                        outputFile<<tmp<<"\n";
+                    }
+                    else{
+                        cache = GetPage(i/PageSize,i%PageSize);
+                    }
+                    if(cache.count(i%PageSize)>0)outputFile<<cache.at(i)<<"\n";
+                    else outputFile<<"EMPTY\n";
                 }
             }
         }
@@ -207,19 +252,38 @@ int main(int argc,char *argv[]){
         // if buffer is full, move data to storage
         int last_file = 0;
         if(buffer.size() == maxbuf){
-            cout<<"Write File!\n";
             string tmpfile_path;
             map<unsigned long long, string>::iterator itr;
             unsigned long long store_number;
+            unsigned long long last_number;
             for (itr = buffer.begin();itr != buffer.end();++itr) { 
                 // page data into storage classified by key's upper 32-bit
-                store_number = itr->first/PageSize;
-                cache.insert({itr->first%PageSize,itr->second});
-                tmpfile_path = "storage/";
-                tmpfile_path.append(to_string(store_number));
-                DataToStorage(tmpfile_path,cache);
-                cache.clear();
+                if(itr == buffer.begin()){
+                    last_number = store_number = itr->first/PageSize;
+                    write_data.insert({itr->first%PageSize,itr->second});
+                    continue;
+                }
+                else{
+                    store_number = itr->first/PageSize;
+                    if(store_number != last_number){
+                        tmpfile_path = "storage/";
+                        tmpfile_path.append(to_string(last_number));
+                        DataToStorage(tmpfile_path,write_data);
+                        write_data.clear();
+                        write_data.insert({itr->first%PageSize,itr->second});
+                        last_number = store_number;
+                    }
+                    else{
+                        write_data.insert({itr->first%PageSize,itr->second});
+                        if(itr == buffer.end()){
+                            tmpfile_path = "storage/";
+                            tmpfile_path.append(to_string(store_number));
+                            DataToStorage(tmpfile_path,write_data);
+                        }
+                    }
+                }
             }
+            write_data.clear();
             buffer.clear();
         }
     }

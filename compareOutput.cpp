@@ -43,6 +43,6 @@ int main(int argc,char *argv[]){
             break;
         }
     }
-    cout<<"Complete the same!!\n";
+    cout<<line<<"\n";
     return 0;
 }
