@@ -1,5 +1,5 @@
 #include<iostream>
-#include<string.h>  
+#include<cstring>  
 #include<fstream>
 #include<sstream>  
 #include<vector>
@@ -8,7 +8,7 @@
 #include<map>
 #include<ctime>
 // set maxbuf size to (128 bytes*1,000,000) = 128MB
-#define maxbuf 1000000
+#define maxbuf 10
 // #define PageSize INT32_MAX
 #define PageSize 4000
 using namespace std;
@@ -19,8 +19,9 @@ string IntToString(unsigned int num){
     ss>>s;
     return s;
 }
-string CheckStorage(unsigned long long int file_number,unsigned long long int key){
+string CheckStorage(unsigned long long file_number,unsigned long long key){
     string file_path = "storage/";
+    cout<<file_number<<", "<<key<<"\n";
     fstream tmpfile(file_path+to_string(file_number),ios_base::in);
     if(!tmpfile){
         return "EMPTY";
@@ -29,12 +30,12 @@ string CheckStorage(unsigned long long int file_number,unsigned long long int ke
     const char* delim = " ";
     int key_pos,value_pos;
     string value;
-    unsigned long long int _key;
+    unsigned long long _key;
     while(!tmpfile.eof()){
         string tmp;
         getline(tmpfile,tmp);
         key_pos = tmp.find_first_of(delim,0);
-        _key = stoll(tmp.substr(0,key_pos));
+        _key = atoll(tmp.substr(0,key_pos).c_str());
         tmp = tmp.substr(key_pos+1,tmp.length());
         if(_key != key){
             continue;
@@ -56,38 +57,50 @@ string CheckStorage(unsigned long long int file_number,unsigned long long int ke
     }
     return "EMPTY";
 }
-void DataToStorage(string file_path,map<unsigned long long int,string>data){
-    map<unsigned long long int,string>stored_data;
+void DataToStorage(string file_path,map<unsigned long long,string>data){
+    map<unsigned long long,string>stored_data;
     cout<<"storage:"<<file_path<<"\n";
     fstream tmpfile(file_path,ios_base::in);
+    map<unsigned long long, string>::iterator itr;
     if(!tmpfile){
-        cout<<"Open storage failed.\n";
-    }
-    int key_pos,value_pos;
-    unsigned long long int _key;
-    const char* delim = " ";
-    string s,value;
-    while(!tmpfile.eof()){
-        getline(tmpfile,s);
-        key_pos = s.find_first_of(delim,0);
-        _key = stoll(s.substr(0,key_pos));
-        s = s.substr(key_pos+1,s.length());
-        value_pos = s.find_first_of(delim,0);
-        value = s.substr(0,value_pos);
-        stored_data.insert({_key,value});
-    }
-    tmpfile.close();
-    map<unsigned long long int, string>::iterator itr;
-    for(itr = data.begin();itr != data.end();++itr){
-        if(stored_data.count(itr->first)==0){
-            // No old data in storage, so insert a new entry
+        // storage doesn't exist
+        cout<<"Storage doesn't exist. Create one.\n";
+        tmpfile.close();
+        for(itr = data.begin();itr != data.end();++itr){
+            cout<<itr->first<<", "<<itr->second<<"\n";
             stored_data.insert({itr->first,itr->second});
         }
-        else{
-            // Update data in storage
-            stored_data.at(itr->first) = itr->second;
+    }
+    else{
+        // if storage exist
+        cout<<"Storage Exist!\n";
+        int key_pos,value_pos;
+        unsigned long long _key;
+        const char* delim = " ";
+        string s,value;
+        while(!tmpfile.eof()){
+            getline(tmpfile,s);
+            key_pos = s.find_first_of(delim,0);
+            _key = atoll(s.substr(0,key_pos).c_str());
+            s = s.substr(key_pos+1,s.length());
+            value_pos = s.find_first_of(delim,0);
+            value = s.substr(0,value_pos);
+            stored_data.insert({_key,value});
+        }
+        tmpfile.close();
+            
+        for(itr = data.begin();itr != data.end();++itr){
+            if(stored_data.count(itr->first)==0){
+                // No old data in storage, so insert a new entry
+                stored_data.insert({itr->first,itr->second});
+            }
+            else{
+                // Update data in storage
+                stored_data.at(itr->first) = itr->second;
+            }
         }
     }
+
     tmpfile.open(file_path,ios_base::out);
     for(itr = stored_data.begin();itr != stored_data.end();++itr){
         tmpfile<<itr->first<<" "<<itr->second<<"\n";
@@ -100,23 +113,23 @@ int main(int argc,char *argv[]){
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
     double start_time = clock();
-    string outputfile_path = "10000.output";
+    string outputfile_path = "result.output";
     string inputfile_path = "";
-    map<unsigned long long int,string> buffer; 
-    map<unsigned long long int,string> cache; 
+    map<unsigned long long,string> buffer; 
+    map<unsigned long long,string> cache; 
     inputfile_path.append(argv[1]);
     // outputfile_path.append(outputfile_path);
     fstream inputFile(inputfile_path,ios_base::in);
     fstream outputFile(outputfile_path,ios_base::out);
-    cout<<"inputFile: "<<inputfile_path<<"\noutputFile: "<<outputfile_path<<endl;
+    // cout<<"inputFile: "<<inputfile_path<<"\noutputFile: "<<outputfile_path<<endl;
     /* Code start here */
     // read command from inputfile
     if(!inputFile){
         cout<<"File doesn't exist.";
         exit(1);
     }
-    string instr;
     // declare needed variables
+    string instr;
     const char* delim = " ";
     int command_pos,key_pos,value_pos;
     string command,value;
@@ -126,17 +139,18 @@ int main(int argc,char *argv[]){
         command_pos = instr.find_first_of(delim,0);
         command = instr.substr(0,command_pos);
         instr = instr.substr(command_pos+1,instr.length());
-        //cout<<command<<"|";
+        cout<<command<<"|";
         if(command == "PUT"){
             // extract key from instruction
             key_pos = instr.find_first_of(delim,0);
-            unsigned long long int key = stoll(instr.substr(0,key_pos));
+            // cout<<key_pos<<endl;
+            unsigned long long key = atoll(instr.substr(0,key_pos).c_str());
             instr = instr.substr(key_pos+1,instr.length());
-            //cout<<key<<"|";
+            // cout<<key<<"|";
             // extract value from instruction
             value_pos = instr.find_first_of(delim,0);
             value = instr.substr(0,value_pos);
-            //cout<<value<<"\n";
+            // cout<<value<<"\n";
 
             /* Implement PUT instr */
             if(buffer.size() <= maxbuf){
@@ -156,7 +170,7 @@ int main(int argc,char *argv[]){
         else if(command == "GET"){
             // extract key from instruction
             key_pos = instr.find_first_of(delim,0);
-            unsigned long long int key = stoll(instr.substr(0,key_pos));
+            unsigned long long key = atoll(instr.substr(0,key_pos).c_str());
             instr = instr.substr(key_pos+1,instr.length());
             //cout<<key<<"|\n";
 
@@ -167,24 +181,24 @@ int main(int argc,char *argv[]){
                 outputFile<<tmp<<"\n";
             }
             else{
-                //cout<<buffer.at(key)<<"\n";
+                cout<<buffer.at(key)<<"\n";
                 outputFile<<buffer.at(key)<<"\n";
             }
         }
         else if(command == "SCAN"){
             // extract key1 from instruction
             key_pos = instr.find_first_of(delim,0);
-            unsigned long long int key_1 = stoll(instr.substr(0,key_pos));
+            unsigned long long key_1 = atoll(instr.substr(0,key_pos).c_str());
             instr = instr.substr(key_pos+1,instr.length());
             //cout<<key_1<<"|";
             // extract key2 from instruction
             key_pos = instr.find_first_of(delim,0);
-            unsigned long long int key_2 = stoll(instr.substr(0,key_pos));
+            unsigned long long key_2 = atoll(instr.substr(0,key_pos).c_str());
             instr = instr.substr(key_pos+1,instr.length());
             //cout<<key_2<<"|\n";
 
             /* Implement SCAN instr */
-            for(unsigned long long int i=key_1;i<=key_2;++i){
+            for(unsigned long long i=key_1;i<=key_2;++i){
                 if(buffer.count(i)>0){
                     //cout<<buffer[i]<<"\n";
                     outputFile<<buffer.at(i)<<"\n";
@@ -197,34 +211,25 @@ int main(int argc,char *argv[]){
         }
 
         // if buffer is full, move data to storage
-        int number_file = 0;
+        int last_file = 0;
         if(buffer.size() == maxbuf){
             cout<<"Write File!\n";
             string tmpfile_path;
-            map<unsigned long long int, string>::iterator itr;
-            unsigned int store_number;
+            map<unsigned long long, string>::iterator itr;
+            unsigned long long store_number;
             for (itr = buffer.begin();itr != buffer.end();++itr) { 
-                // cout << itr->first <<", " << itr->second <<"\n"; 
+                cout << itr->first <<", " << itr->second <<"\n"; 
+            }cout<<"\n\n";
+            for (itr = buffer.begin();itr != buffer.end();++itr) { 
+                cout << itr->first <<", " << itr->second <<"\n"; 
                 // page data into storage classified by key's upper 32-bit
-                if(itr == buffer.begin()){
-                    // 1st round
-                    cache.insert({itr->first,itr->second});
-                    number_file = itr->first/PageSize;
-                }
                 store_number = itr->first/PageSize;
-                // cout<<store_number<<"\n";
-                if(store_number>number_file){
-                    tmpfile_path = "storage/";
-                    tmpfile_path.append(to_string(number_file));
-                    DataToStorage(tmpfile_path,cache);
-                    cache.clear();
-                    number_file = store_number;
-                    // Maybe change int to unsigned int, long to unsigned long for scale.
-                }
-                else{
-                    cache.insert({itr->first,itr->second});
-                }
-            } 
+                cache.insert({itr->first%PageSize,itr->second});
+                tmpfile_path = "storage/";
+                tmpfile_path.append(to_string(store_number));
+                DataToStorage(tmpfile_path,cache);
+                cache.clear();
+            }
             buffer.clear();
         }
         // output buffer 
